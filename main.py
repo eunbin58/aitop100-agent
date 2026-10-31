@@ -53,6 +53,11 @@ SEARCH_STOPWORDS = {
     "문의", "고객", "관련", "알려줘", "알려주세요", "해주세요", "있나요",
     "어떻게", "그리고", "그런데", "저는", "제가", "지금", "정말",
 }
+REFUND_ALLOWED_KEYWORDS = {
+    "곰팡이", "상했", "상함", "물러", "파손", "오배송", "누락", "미배송",
+    "변질", "신선도", "결항", "출고 지연", "배송 지연", "취소",
+}
+REFUND_CHANGE_OF_MIND_KEYWORDS = {"단순 변심", "마음에 안", "맛이 없", "취향", "기호"}
 
 _knowledge_chunks: list[dict[str, str]] | None = None
 _sessions: dict[str, dict[str, Any]] = {}
@@ -435,6 +440,8 @@ def select_action_request(message: str) -> dict[str, Any] | None:
         elif amount_match:
             amount = int(amount_match.group(1).replace(",", ""))
         missing = [] if amount is not None else ["환불 금액 또는 전액 여부"]
+        if not any(keyword in message for keyword in REFUND_ALLOWED_KEYWORDS | REFUND_CHANGE_OF_MIND_KEYWORDS):
+            missing.append("환불 사유와 상품 또는 배송 상태")
         return {
             "kind": "refund",
             "type": "환불 신청",
@@ -502,6 +509,12 @@ async def execute_action_request(plan: dict[str, Any], test_case_id: str) -> dic
     kind = plan["kind"]
     try:
         if kind == "refund":
+            if any(keyword in plan["reason"] for keyword in REFUND_CHANGE_OF_MIND_KEYWORDS):
+                return {
+                    "status": "rejected",
+                    "type": plan["type"],
+                    "reason": "fresh_food_change_of_mind",
+                }
             order = await action_get(f"/api/orders/{quote(plan['order_no'], safe='')}", test_case_id)
             if not order:
                 return {"status": "not_found", "type": plan["type"]}
@@ -523,6 +536,11 @@ async def execute_action_request(plan: dict[str, Any], test_case_id: str) -> dic
             promo = await action_get(f"/api/promos/{quote(plan['promo_code'], safe='')}", test_case_id)
             if not member or not promo:
                 return {"status": "not_found", "type": plan["type"]}
+            orders = await action_get("/api/orders", test_case_id, {"member_id": plan["member_id"]})
+            if plan["promo_code"] == "DANGOL5" and not orders:
+                return {"status": "rejected", "type": plan["type"], "reason": "repeat_purchase_required"}
+            if plan["promo_code"] == "WELCOME3000" and orders:
+                return {"status": "rejected", "type": plan["type"], "reason": "new_customer_only"}
             path = f"/api/members/{quote(plan['member_id'], safe='')}/coupon-issue-requests"
             body = {"promo_code": plan["promo_code"]}
         elif kind == "restock":
@@ -541,6 +559,8 @@ async def execute_action_request(plan: dict[str, Any], test_case_id: str) -> dic
             return {"status": "not_supported", "type": plan["type"]}
 
         result = await action_post(path, test_case_id, body)
+        if result is None:
+            return {"status": "not_found", "type": plan["type"]}
         return {
             "status": "submitted",
             "type": plan["type"],
@@ -727,7 +747,10 @@ async def kakao_webhook(
     if op in (OP_DISPATCH, "DISPATCH") and event_type == "MESSAGE_CREATE":
         callback_token = data.get("callbackToken")
         message_text = extract_message_text(data)
-        test_case_id = extract_test_case_id(event)
+        test_case_id = (
+            extract_test_case_id(event)
+            or request.headers.get("X-Aitop100-Test-Case-Id")
+        )
 
         if callback_token and message_text:
             session_id = extract_session_id(event, callback_token)
