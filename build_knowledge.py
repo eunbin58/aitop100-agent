@@ -135,10 +135,7 @@ def chunks(text: str, size: int = 1400, overlap: int = 180):
 
 
 def source_paths() -> list[Path]:
-    paths = [
-        KNOWLEDGE_DIR / "notion_knowledge_hub.md",
-        KNOWLEDGE_DIR / "notion_operation_notes.md",
-    ]
+    paths = list(KNOWLEDGE_DIR.glob("*.md")) + list(KNOWLEDGE_DIR.glob("*.txt"))
     for folder in (KNOWLEDGE_DIR / "raw", KNOWLEDGE_DIR / "extracted"):
         paths.extend(
             path

@@ -6,6 +6,8 @@
 - `actions.json`: AI TOP 100 액션 API 명세
 - `notion_knowledge_hub.md`: 관계자 인터뷰·정책·원본 링크 정리
 - `notion_operation_notes.md`: 대회 운영·개발 기록
+- `interview_test_cases.md`: 인터뷰·공개 사례에서 일반화한 추가 상담 규칙
+- `public_tc_rules.md`: 공개 TC 15건 전문과 최신 Notion 수집 내용에서 일반화한 최종 규칙
 
 ## 공식 원본 URL
 
