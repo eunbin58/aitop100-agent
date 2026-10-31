@@ -594,6 +594,12 @@ async def process_action(message: str, test_case_id: str | None) -> dict[str, An
     request_plan = select_action_request(message)
     if not request_plan:
         return await lookup_action(message, test_case_id)
+    if request_plan.get("missing"):
+        return {
+            "status": "needs_information",
+            "type": request_plan["type"],
+            "missing": request_plan["missing"],
+        }
     if not test_case_id:
         return {"status": "unavailable", "reason": "test_case_id_missing", "type": request_plan["type"]}
     return await execute_action_request(request_plan, test_case_id)

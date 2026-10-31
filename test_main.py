@@ -58,6 +58,20 @@ class ActionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["status"], "unavailable")
         get.assert_not_awaited()
 
+    async def test_missing_refund_reason_is_requested_before_test_case(self):
+        with (
+            patch.object(main, "action_get", AsyncMock()) as get,
+            patch.object(main, "action_post", AsyncMock()) as post,
+        ):
+            result = await main.process_action(
+                "주문번호는 100100003이고 전액 환불해줘",
+                None,
+            )
+        self.assertEqual(result["status"], "needs_information")
+        self.assertIn("환불 사유와 상품 또는 배송 상태", result["missing"])
+        get.assert_not_awaited()
+        post.assert_not_awaited()
+
 
 if __name__ == "__main__":
     unittest.main()
