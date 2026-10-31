@@ -5,6 +5,11 @@ import main
 
 
 class KnowledgeTests(unittest.TestCase):
+    def test_ai_instructions_do_not_treat_public_examples_as_live_order_facts(self):
+        self.assertIn("현재 고객에게 확인된 사실이 아닙니다", main.AI_INSTRUCTIONS)
+        self.assertIn("섭취 여부와 신체 이상 여부", main.AI_INSTRUCTIONS)
+        self.assertIn("조회 실패 문구를 쓰지 말고", main.AI_INSTRUCTIONS)
+
     def test_retrieval_finds_policy_and_promotion(self):
         self.assertIn("7일", main.search_knowledge("하자 환불 신고기간"))
         self.assertIn("DANGOL5", main.search_knowledge("단골 할인 쿠폰"))
